@@ -41,25 +41,39 @@ const PastelFrame = () => {
       const padding = hasPadding ? 20 : 0;
       const cornerRadius = 15;
 
-      const maxWidth = window.innerWidth * 0.8;
-      const maxHeight = window.innerHeight * 0.5;
-      let newWidth = 700;
-      let newHeight = 300;
-      if (image) {
-        newWidth = image.width;
-        newHeight = image.height;
-      }
+      // Make these percentages of the viewport
+      const maxWidthPercentage = 0.9; // 90% of viewport width
+      const maxHeightPercentage = 0.7; // 70% of viewport height
 
+      const maxWidth = window.innerWidth * maxWidthPercentage - 2*padding;
+      const maxHeight = window.innerHeight * maxHeightPercentage - 2*padding;
+
+      // Set a minimum size
+      const minWidth = 300;
+      const minHeight = 200;
+
+      let newWidth = image ? image.width : 700;
+      let newHeight = image ? image.height : 300;
+
+      // Calculate aspect ratio
+      const aspectRatio = newWidth / newHeight;
+
+      // Adjust dimensions based on max width and height
       if (newWidth > maxWidth) {
-        newHeight = (maxWidth / newWidth) * newHeight;
         newWidth = maxWidth;
+        newHeight = newWidth / aspectRatio;
       }
 
       if (newHeight > maxHeight) {
-        newWidth = (maxHeight / newHeight) * newWidth;
         newHeight = maxHeight;
+        newWidth = newHeight * aspectRatio;
       }
 
+      // Ensure minimum size
+      newWidth = Math.max(newWidth, minWidth);
+      newHeight = Math.max(newHeight, minHeight);
+
+      // Adjust canvas size
       canvas.width = newWidth + padding * 2 + borderWidth.left + borderWidth.right;
       canvas.height = newHeight + padding * 2 + borderWidth.top + borderWidth.bottom;
 
@@ -124,7 +138,17 @@ const PastelFrame = () => {
       }
     };
     
-    drawImage();
+    drawImage(); 
+    const handleResize = () => {
+      drawImage();
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    // Cleanup function
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
   }, [image, backgroundColor, borderColor, borderWidth, hasPadding, hasDropShadow]);
 
   const handleImageUpload = (e) => {
