@@ -25,10 +25,100 @@ const PastelFrame = () => {
     'linear-gradient(to right, #fbc2eb, #a6c1ee)'
   ];
 
+
+
   useEffect(() => {
-    if (image) {
-      drawImage();
-    }
+
+    const drawImage = () => {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      const padding = hasPadding ? 20 : 0;
+      const cornerRadius = 15;
+
+      const maxWidth = window.innerWidth * 0.8;
+      const maxHeight = window.innerHeight * 0.5;
+      let newWidth = 700;
+      let newHeight = 300;
+      if (image) {
+        newWidth = image.width;
+        newHeight = image.height;
+      }
+
+      if (newWidth > maxWidth) {
+        newHeight = (maxWidth / newWidth) * newHeight;
+        newWidth = maxWidth;
+      }
+
+      if (newHeight > maxHeight) {
+        newWidth = (maxHeight / newHeight) * newWidth;
+        newHeight = maxHeight;
+      }
+
+      canvas.width = newWidth + padding * 2 + borderWidth.left + borderWidth.right;
+      canvas.height = newHeight + padding * 2 + borderWidth.top + borderWidth.bottom;
+
+      if (hasDropShadow) {
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 20;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+      }
+
+      // Draw background
+      const backgroundGradient = createGradient(ctx, backgroundColor, canvas.width, canvas.height);
+      ctx.fillStyle = backgroundGradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+
+      // Draw border
+      ctx.fillStyle = borderColor;
+      ctx.beginPath();
+      ctx.moveTo(borderWidth.left, cornerRadius + borderWidth.top);
+      ctx.arcTo(borderWidth.left, borderWidth.top, cornerRadius + borderWidth.left, borderWidth.top, cornerRadius);
+      ctx.lineTo(canvas.width - cornerRadius - borderWidth.right, borderWidth.top);
+      ctx.arcTo(canvas.width - borderWidth.right, borderWidth.top, canvas.width - borderWidth.right, cornerRadius + borderWidth.top, cornerRadius);
+      ctx.lineTo(canvas.width - borderWidth.right, canvas.height - cornerRadius - borderWidth.bottom);
+      ctx.arcTo(canvas.width - borderWidth.right, canvas.height - borderWidth.bottom, canvas.width - cornerRadius - borderWidth.right, canvas.height - borderWidth.bottom, cornerRadius);
+      ctx.lineTo(cornerRadius + borderWidth.left, canvas.height - borderWidth.bottom);
+      ctx.arcTo(borderWidth.left, canvas.height - borderWidth.bottom, borderWidth.left, canvas.height - cornerRadius - borderWidth.bottom, cornerRadius);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+
+      if (!hasPadding) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(borderWidth.left + cornerRadius, borderWidth.top);
+        ctx.arcTo(borderWidth.left + newWidth, borderWidth.top, borderWidth.left + newWidth, borderWidth.top + cornerRadius, cornerRadius);
+        ctx.arcTo(borderWidth.left + newWidth, borderWidth.top + newHeight, borderWidth.left + newWidth - cornerRadius, borderWidth.top + newHeight, cornerRadius);
+        ctx.arcTo(borderWidth.left, borderWidth.top + newHeight, borderWidth.left, borderWidth.top + newHeight - cornerRadius, cornerRadius);
+        ctx.arcTo(borderWidth.left, borderWidth.top, borderWidth.left + cornerRadius, borderWidth.top, cornerRadius);
+        ctx.closePath();
+        ctx.clip();
+      }
+
+      if (!image) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.0)';
+        ctx.fillRect(
+          borderWidth.left + padding, 
+          borderWidth.top + padding, 
+          newWidth, 
+          newHeight
+        );
+      } else {
+        ctx.drawImage(image, borderWidth.left + padding, borderWidth.top + padding, newWidth, newHeight);
+      }
+
+      if (!hasPadding) {
+        ctx.restore();
+      }
+    };
+    
+    drawImage();
   }, [image, backgroundColor, borderColor, borderWidth, hasPadding, hasDropShadow]);
 
   const handleImageUpload = (e) => {
@@ -47,26 +137,40 @@ const PastelFrame = () => {
   };
 
   const getAverageColor = (img) => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = img.width;
-    canvas.height = img.height;
-    ctx.drawImage(img, 0, 0, img.width, img.height);
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
-    let r = 0, g = 0, b = 0;
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0, img.width, img.height);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
 
-    for (let i = 0; i < data.length; i += 4) {
-      r += data[i];
-      g += data[i + 1];
-      b += data[i + 2];
-    }
+      let r = 0, g = 0, b = 0;
+      let count = 0;
 
-    r = Math.floor(r / (data.length / 4));
-    g = Math.floor(g / (data.length / 4));
-    b = Math.floor(b / (data.length / 4));
+      // Define the 20% border dimensions
+      const borderX = Math.floor(canvas.width * 0.2);
+      const borderY = Math.floor(canvas.height * 0.2);
 
-    return `rgb(${r},${g},${b})`;
+      for (let y = 0; y < canvas.height; y++) {
+          for (let x = 0; x < canvas.width; x++) {
+              // Check if the current pixel is within the border area
+              if (x < borderX || x >= canvas.width - borderX || y < borderY || y >= canvas.height - borderY) {
+                  const index = (y * canvas.width + x) * 4;
+                  r += data[index];
+                  g += data[index + 1];
+                  b += data[index + 2];
+                  count++;
+              }
+          }
+      }
+
+      // Calculate the average color
+      r = Math.floor(r / count);
+      g = Math.floor(g / count);
+      b = Math.floor(b / count);
+
+      return `rgb(${r},${g},${b})`;
   };
 
   const createGradient = (ctx, color, width, height) => {
@@ -80,81 +184,6 @@ const PastelFrame = () => {
       return gradient;
     }
     return color;
-  };
-
-  const drawImage = () => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    const padding = hasPadding ? 20 : 0;
-    const cornerRadius = 15;
-
-    const maxWidth = window.innerWidth * 0.8;
-    const maxHeight = window.innerHeight * 0.5;
-    let newWidth = image.width;
-    let newHeight = image.height;
-
-    if (newWidth > maxWidth) {
-      newHeight = (maxWidth / newWidth) * newHeight;
-      newWidth = maxWidth;
-    }
-
-    if (newHeight > maxHeight) {
-      newWidth = (maxHeight / newHeight) * newWidth;
-      newHeight = maxHeight;
-    }
-
-    canvas.width = newWidth + padding * 2 + borderWidth.left + borderWidth.right;
-    canvas.height = newHeight + padding * 2 + borderWidth.top + borderWidth.bottom;
-
-    if (hasDropShadow) {
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-      ctx.shadowBlur = 20;
-      ctx.shadowOffsetX = 0;
-      ctx.shadowOffsetY = 0;
-    }
-
-    // Draw background
-    const backgroundGradient = createGradient(ctx, backgroundColor, canvas.width, canvas.height);
-    ctx.fillStyle = backgroundGradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-
-    // Draw border
-    ctx.fillStyle = borderColor;
-    ctx.beginPath();
-    ctx.moveTo(borderWidth.left, cornerRadius + borderWidth.top);
-    ctx.arcTo(borderWidth.left, borderWidth.top, cornerRadius + borderWidth.left, borderWidth.top, cornerRadius);
-    ctx.lineTo(canvas.width - cornerRadius - borderWidth.right, borderWidth.top);
-    ctx.arcTo(canvas.width - borderWidth.right, borderWidth.top, canvas.width - borderWidth.right, cornerRadius + borderWidth.top, cornerRadius);
-    ctx.lineTo(canvas.width - borderWidth.right, canvas.height - cornerRadius - borderWidth.bottom);
-    ctx.arcTo(canvas.width - borderWidth.right, canvas.height - borderWidth.bottom, canvas.width - cornerRadius - borderWidth.right, canvas.height - borderWidth.bottom, cornerRadius);
-    ctx.lineTo(cornerRadius + borderWidth.left, canvas.height - borderWidth.bottom);
-    ctx.arcTo(borderWidth.left, canvas.height - borderWidth.bottom, borderWidth.left, canvas.height - cornerRadius - borderWidth.bottom, cornerRadius);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.shadowColor = 'transparent';
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
-
-    if (!hasPadding) {
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(borderWidth.left + cornerRadius, borderWidth.top);
-      ctx.arcTo(borderWidth.left + newWidth, borderWidth.top, borderWidth.left + newWidth, borderWidth.top + cornerRadius, cornerRadius);
-      ctx.arcTo(borderWidth.left + newWidth, borderWidth.top + newHeight, borderWidth.left + newWidth - cornerRadius, borderWidth.top + newHeight, cornerRadius);
-      ctx.arcTo(borderWidth.left, borderWidth.top + newHeight, borderWidth.left, borderWidth.top + newHeight - cornerRadius, cornerRadius);
-      ctx.arcTo(borderWidth.left, borderWidth.top, borderWidth.left + cornerRadius, borderWidth.top, cornerRadius);
-      ctx.closePath();
-      ctx.clip();
-    }
-
-    ctx.drawImage(image, borderWidth.left + padding, borderWidth.top + padding, newWidth, newHeight);
-
-    if (!hasPadding) {
-      ctx.restore();
-    }
   };
 
   const handleDownload = () => {
@@ -187,45 +216,47 @@ const PastelFrame = () => {
     setInitialMousePos({x: e.clientX, y: e.clientY});
   };
 
-  const handleMouseMove = (e) => {
-    if (isDragging && initialMousePos) {
-      const dx = e.clientX - initialMousePos.x;
-      const dy = e.clientY - initialMousePos.y;
-
-      setBorderWidth(prev => {
-        const newBorderWidth = { ...prev };
-        switch (isDragging) {
-          case 'top':
-          case 'bottom':
-            const totalVerticalChange = Math.max(40, Math.min(300, initialBorderWidth.top + initialBorderWidth.bottom + dy * (isDragging === 'bottom' ? 2 : -2)));
-            newBorderWidth.top = totalVerticalChange / 2;
-            newBorderWidth.bottom = totalVerticalChange / 2;
-            break;
-          case 'left':
-          case 'right':
-            const totalHorizontalChange = Math.max(40, Math.min(300, initialBorderWidth.left + initialBorderWidth.right + dx * (isDragging === 'right' ? 2 : -2)));
-            newBorderWidth.left = totalHorizontalChange / 2;
-            newBorderWidth.right = totalHorizontalChange / 2;
-            break;
-        }
-        return newBorderWidth;
-      });
-    }
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(null);
-    setInitialMousePos(null);
-  };
-
   useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (isDragging && initialMousePos) {
+        const dx = e.clientX - initialMousePos.x;
+        const dy = e.clientY - initialMousePos.y;
+
+        setBorderWidth(prev => {
+          const newBorderWidth = { ...prev };
+          switch (isDragging) {
+            case 'top':
+            case 'bottom':
+              const totalVerticalChange = Math.max(40, Math.min(300, initialBorderWidth.top + initialBorderWidth.bottom + dy * (isDragging === 'bottom' ? 2 : -2)));
+              newBorderWidth.top = totalVerticalChange / 2;
+              newBorderWidth.bottom = totalVerticalChange / 2;
+              break;
+            case 'left':
+            case 'right':
+              const totalHorizontalChange = Math.max(40, Math.min(300, initialBorderWidth.left + initialBorderWidth.right + dx * (isDragging === 'right' ? 2 : -2)));
+              newBorderWidth.left = totalHorizontalChange / 2;
+              newBorderWidth.right = totalHorizontalChange / 2;
+              break;
+            default:
+              break;
+          }
+          return newBorderWidth;
+        });
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(null);
+      setInitialMousePos(null);
+    };
+
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, initialMousePos]);
+  }, [isDragging, initialBorderWidth, initialMousePos]);
 
   return (
     <div style={{
@@ -239,7 +270,7 @@ const PastelFrame = () => {
       color: isDarkMode ? '#ECF0F1' : '#2C3E50',
       transition: 'background-color 0.3s, color 0.3s'
     }}>
-      <h1 style={{fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '1.5rem'}}>PastelFrame</h1>
+      <h1 style={{fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '1.5rem'}}>PastelFrame.io</h1>
       
       {!imageUploaded && (<div style={{
         position: 'relative',
@@ -271,7 +302,7 @@ const PastelFrame = () => {
         <span style={{pointerEvents: 'none'}}>Choose an image or drag it here</span>
       </div>)}
 
-      {image && (
+      
         <div style={{position: 'relative', marginBottom: '1.5rem'}}>
           <canvas ref={canvasRef} style={{boxShadow: '0 10px 20px rgba(0, 0, 0, 0.5)', borderRadius: '8px'}} />
           <div
@@ -331,9 +362,9 @@ const PastelFrame = () => {
             onMouseDown={(e) => handleMouseDown(e, 'left')}
           />
         </div>
-      )}
+      
 
-      {image && (
+      
         <div style={{
           display: 'flex',
           flexDirection: 'column',
@@ -453,7 +484,41 @@ const PastelFrame = () => {
             </button>
           </div>
         </div>
-      )}
+      
+      <div style={{
+        position: 'fixed',
+        bottom: '1rem',
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '0.9rem',
+        backgroundColor: isDarkMode ? '#34495E' : '#D6EAF8',
+        color: isDarkMode ? '#ECF0F1' : '#2C3E50',
+        padding: '0.5rem 1rem',
+        borderRadius: '20px',
+        boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+        transition: 'all 0.3s ease'
+      }}>
+        <a 
+          href="https://debarghyadas.com/?" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          style={{
+            color: 'inherit',
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}
+        >
+          <span style={{
+            display: 'inline-block',
+            width: '10px',
+            height: '10px',
+            borderRadius: '50%',
+            backgroundColor: isDarkMode ? '#3498DB' : '#2980B9'
+          }}></span>
+          Made by Deedy
+        </a>
+      </div>
 
       <div style={{
         position: 'fixed',
