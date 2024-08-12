@@ -1,6 +1,6 @@
 # PastelFrame
 
-PastelFrame is a React component that allows users to enhance their images with customizable pastel frames, borders, and effects.
+[PastelFrame.io](https://pastelframe.io/) is a product that lets you make prettier images for social media by adding customizable pastel frames, borders, and effects.
 
 ## Features
 
@@ -14,30 +14,19 @@ PastelFrame is a React component that allows users to enhance their images with 
 
 ## Installation
 
-1. Clone this repository or copy the `PastelFrame.js` file into your React project.
-2. Ensure you have the necessary dependencies installed:
+1. Clone this repository
+2. Navigate to the directory and install dependencies
 
 ```bash
-npm install react
+npm install
 ```
 
-## Usage
+3. Run it locally
 
-Import the PastelFrame component into your React application:
-
-```jsx
-import PastelFrame from './path/to/PastelFrame';
-
-function App() {
-  return (
-    <div className="App">
-      <PastelFrame />
-    </div>
-  );
-}
-
-export default App;
+```bash
+npm start 
 ```
+
 
 ## How to Use
 
@@ -59,6 +48,7 @@ Contributions, issues, and feature requests are welcome. Feel free to check [iss
 
 ## Future
 
+ - Resizing should make smaller
  - Annotation 
  - Custom Pallette 
  - Text, Code, Tweet
