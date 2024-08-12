@@ -57,6 +57,13 @@ You can easily customize the PastelFrame component by modifying the `pastelColor
 
 Contributions, issues, and feature requests are welcome. Feel free to check [issues page](https://github.com/yourusername/pastelframe/issues) if you want to contribute.
 
+## Future
+
+ - Annotation 
+ - Custom Pallette 
+ - Text, Code, Tweet
+ - Watermark
+
 ## License
 
 This project is [MIT](https://choosealicense.com/licenses/mit/) licensed.

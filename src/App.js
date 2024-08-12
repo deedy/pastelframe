@@ -18,6 +18,7 @@ const PastelFrame = () => {
   const [isDragging, setIsDragging] = useState(null);
   const [initialBorderWidth, setInitialBorderWidth] = useState(null);
   const [initialMousePos, setInitialMousePos] = useState(null);
+  const [isPasting, setIsPasting] = useState(false);
 
   const pastelColors = [
     '#C2A6B5', '#A6B5C2', '#B5C2A6', '#C2B5A6', '#A6C2B5', 
@@ -31,6 +32,51 @@ const PastelFrame = () => {
 
   useEffect(() => {
     ReactGA.send({ hitType: "pageview", page: window.location.pathname });
+  }, []);
+
+  useEffect(() => {
+    const handlePaste = (e) => {
+      setIsPasting(false);
+      const items = e.clipboardData.items;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const blob = items[i].getAsFile();
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+              setImage(img);
+              setBorderColor(getAverageColor(img));
+            };
+            img.src = event.target.result;
+          };
+          reader.readAsDataURL(blob);
+          break;
+        }
+      }
+    };
+
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
+        setIsPasting(true);
+      }
+    };
+
+    const handleKeyUp = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
+        setIsPasting(false);
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('paste', handlePaste);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
   }, []);
 
   useEffect(() => {
@@ -338,10 +384,17 @@ const PastelFrame = () => {
             width: '100%',
             height: '100%',
             opacity: 0,
-            cursor: 'pointer'
+            cursor: 'pointer',
+            border: isPasting ? '2px solid #3498DB' : '2px dashed #A6A6A6',
+            transition: 'border 0.3s ease'
           }} 
         />
-        <span style={{pointerEvents: 'none'}}>Choose an image or drag it here</span>
+        <span style={{
+          pointerEvents: 'none',
+          transition: 'color 0.3s ease'
+        }}>
+          {isPasting ? 'Pasting...' : 'Choose an image, drag it here, or paste'}
+        </span>
       </div>)}
 
       
