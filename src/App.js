@@ -1,4 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
+import ReactGA from "react-ga4";
+
+ReactGA.initialize("G-ZCMZ5QCRD7"); 
+
 
 const PastelFrame = () => {
   const [image, setImage] = useState(null);
@@ -25,7 +29,9 @@ const PastelFrame = () => {
     'linear-gradient(to right, #fbc2eb, #a6c1ee)'
   ];
 
-
+  useEffect(() => {
+    ReactGA.send({ hitType: "pageview", page: window.location.pathname });
+  }, []);
 
   useEffect(() => {
 
@@ -134,6 +140,10 @@ const PastelFrame = () => {
     };
     reader.readAsDataURL(file);
     setImageUploaded(true);
+    ReactGA.event({
+      category: "User Interaction",
+      action: "Uploaded Image",
+    });
   };
 
   const getAverageColor = (img) => {
@@ -195,6 +205,10 @@ const PastelFrame = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    ReactGA.event({
+      category: "User Interaction",
+      action: "Downloaded Image",
+    });
   };
 
   const handleCopyToClipboard = () => {
@@ -207,6 +221,10 @@ const PastelFrame = () => {
       }, (error) => {
         console.error("Error copying image to clipboard:", error);
       });
+    });
+    ReactGA.event({
+      category: "User Interaction",
+      action: "Copied to Clipboard",
     });
   };
 
