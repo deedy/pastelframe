@@ -1,8 +1,17 @@
 import React, { useState, useRef, useEffect } from "react";
 import ReactGA from "react-ga4";
 import quantize from "quantize";
+import "./PastelFrame.css";
 
 ReactGA.initialize("G-ZCMZ5QCRD7");
+
+const Toggle = ({ checked, onChange, label }) => (
+  <label className="toggle-switch">
+    <input type="checkbox" checked={checked} onChange={onChange} />
+    <span className="toggle-slider"></span>
+    <span className="toggle-label">{label}</span>
+  </label>
+);
 
 const PastelFrame = () => {
   const [image, setImage] = useState(null);
@@ -22,7 +31,7 @@ const PastelFrame = () => {
   const canvasRef = useRef(null);
   const [isDragging, setIsDragging] = useState(null);
   const [initialBorderWidth, setInitialBorderWidth] = useState(null);
-  const [initialMousePos, setInitialMousePos] = useState(null);
+  const [initialTouchPos, setInitialTouchPos] = useState(null);
   const [isPasting, setIsPasting] = useState(false);
   const [isImageBackgroundRemoved, setIsImageBackgroundRemoved] =
     useState(false);
@@ -689,17 +698,33 @@ const PastelFrame = () => {
     });
   };
 
-  const handleMouseDown = (e, direction) => {
+  const handleResizeStart = (e, direction) => {
+    e.preventDefault(); // Prevent scrolling on touch devices
     setIsDragging(direction);
     setInitialBorderWidth({ ...borderWidth });
-    setInitialMousePos({ x: e.clientX, y: e.clientY });
+    if (e.type === "mousedown") {
+      setInitialTouchPos({ x: e.clientX, y: e.clientY });
+    } else if (e.type === "touchstart") {
+      setInitialTouchPos({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+    }
   };
 
   useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (isDragging && initialMousePos) {
-        const dx = e.clientX - initialMousePos.x;
-        const dy = e.clientY - initialMousePos.y;
+    const minBorderWidth = 20;
+
+    const handleResize = (e) => {
+      if (isDragging && initialTouchPos) {
+        let clientX, clientY;
+        if (e.type === "mousemove") {
+          clientX = e.clientX;
+          clientY = e.clientY;
+        } else if (e.type === "touchmove") {
+          clientX = e.touches[0].clientX;
+          clientY = e.touches[0].clientY;
+        }
+
+        const dx = clientX - initialTouchPos.x;
+        const dy = clientY - initialTouchPos.y;
 
         let newBorderWidth = { ...borderWidth };
 
@@ -713,11 +738,11 @@ const PastelFrame = () => {
                 dy * (isDragging === "bottom" ? 2 : -2),
             );
             newBorderWidth.top = Math.max(
-              MIN_BORDER_WIDTH,
+              minBorderWidth,
               totalVerticalChange / 2,
             );
             newBorderWidth.bottom = Math.max(
-              MIN_BORDER_WIDTH,
+              minBorderWidth,
               totalVerticalChange / 2,
             );
             break;
@@ -730,11 +755,11 @@ const PastelFrame = () => {
                 dx * (isDragging === "right" ? 2 : -2),
             );
             newBorderWidth.left = Math.max(
-              MIN_BORDER_WIDTH,
+              minBorderWidth,
               totalHorizontalChange / 2,
             );
             newBorderWidth.right = Math.max(
-              MIN_BORDER_WIDTH,
+              minBorderWidth,
               totalHorizontalChange / 2,
             );
             break;
@@ -784,19 +809,23 @@ const PastelFrame = () => {
         });
       }
     };
-
-    const handleMouseUp = () => {
+    const handleResizeEnd = () => {
       setIsDragging(null);
-      setInitialMousePos(null);
+      setInitialTouchPos(null);
     };
 
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("mousemove", handleResize);
+    window.addEventListener("touchmove", handleResize);
+    window.addEventListener("mouseup", handleResizeEnd);
+    window.addEventListener("touchend", handleResizeEnd);
+
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("mousemove", handleResize);
+      window.removeEventListener("touchmove", handleResize);
+      window.removeEventListener("mouseup", handleResizeEnd);
+      window.removeEventListener("touchend", handleResizeEnd);
     };
-  }, [borderWidth, isDragging, imageSize, initialBorderWidth, initialMousePos]);
+  }, [imageSize, isDragging, initialBorderWidth, initialTouchPos, borderWidth]);
 
   const dragButtonStyle = (position, isHovered) => ({
     position: "absolute",
@@ -814,7 +843,8 @@ const PastelFrame = () => {
   const renderDragButton = (position, direction) => (
     <div
       style={dragButtonStyle(position, hoveredButton === direction)}
-      onMouseDown={(e) => handleMouseDown(e, direction)}
+      onMouseDown={(e) => handleResizeStart(e, direction)}
+      onTouchStart={(e) => handleResizeStart(e, direction)}
       onMouseEnter={() => setHoveredButton(direction)}
       onMouseLeave={() => setHoveredButton(null)}
     />
@@ -952,34 +982,27 @@ const PastelFrame = () => {
           </div>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <label style={{ display: "flex", alignItems: "center" }}>
-            <input
-              type="checkbox"
-              checked={hasPadding}
-              onChange={(e) => setHasPadding(e.target.checked)}
-              style={{ marginRight: "0.5rem" }}
-            />
-            Add Padding
-          </label>
-          <label style={{ display: "flex", alignItems: "center" }}>
-            <input
-              type="checkbox"
-              checked={isImageBackgroundRemoved}
-              onChange={(e) => setIsImageBackgroundRemoved(e.target.checked)}
-              style={{ marginRight: "0.5rem" }}
-            />
-            Remove Background
-          </label>
-          <label style={{ display: "flex", alignItems: "center" }}>
-            <input
-              type="checkbox"
-              checked={hasDropShadow}
-              onChange={(e) => setHasDropShadow(e.target.checked)}
-              style={{ marginRight: "0.5rem" }}
-            />
-            Add Drop Shadow
-          </label>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "space-between",
+          }}
+        >
+          <Toggle
+            checked={hasPadding}
+            onChange={(e) => setHasPadding(e.target.checked)}
+            label="Add Padding"
+          />
+          <Toggle
+            checked={isImageBackgroundRemoved}
+            onChange={(e) => setIsImageBackgroundRemoved(e.target.checked)}
+            label="Remove Background"
+          />
+          <Toggle
+            checked={hasDropShadow}
+            onChange={(e) => setHasDropShadow(e.target.checked)}
+            label="Add Drop Shadow"
+          />
         </div>
         {isImageBackgroundRemoved && (
           <div
