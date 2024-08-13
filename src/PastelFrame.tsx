@@ -39,6 +39,7 @@ const PastelFrame = () => {
   const [threshold, setThreshold] = useState(30);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const [hoveredButton, setHoveredButton] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [pastelColors, setPastelColors] = useState([
     "#FF9AA2", // Bold pastel pink
     "#FFB7B2", // Bold pastel peach
@@ -48,9 +49,6 @@ const PastelFrame = () => {
     "#C7CEEA", // Bold pastel periwinkle
     "#FF85A1", // Bold pastel rose
     "#FFC300", // Bold pastel yellow
-    "#DAF7A6", // Bold pastel green
-    "#FF99C8", // Bold pastel bubblegum
-    "linear-gradient(to right, #FF9AA2, #FFDAC1)", // Bold pink to orange gradient
     "linear-gradient(to right, #B5EAD7, #C7CEEA)", // Bold mint to periwinkle gradient
     "linear-gradient(to right, #FFB7B2, #FF85A1)", // Bold peach to rose gradient
     "linear-gradient(to right, #E2F0CB, #DAF7A6)", // Bold lime to green gradient
@@ -227,8 +225,8 @@ const PastelFrame = () => {
       const maxWidth = window.innerWidth * maxWidthPercentage - 2 * padding;
       const maxHeight = window.innerHeight * maxHeightPercentage - 2 * padding;
 
-      let newWidth = image ? imageSize.width : 700;
-      let newHeight = image ? imageSize.height : 300;
+      let newWidth = image ? imageSize.width : maxWidth;
+      let newHeight = image ? imageSize.height : maxHeight;
 
       // Adjust canvas size based on border width
       const totalWidth =
@@ -437,6 +435,7 @@ const PastelFrame = () => {
 
     drawImage();
     const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
       drawImage();
     };
 
@@ -947,7 +946,7 @@ const PastelFrame = () => {
           flexDirection: "column",
           gap: "1rem",
           width: "100%",
-          maxWidth: "600px",
+          maxWidth: isMobile ? "300px" : "600px",
           padding: "1rem",
           backgroundColor: isDarkMode ? "#34495E" : "#D6EAF8",
           borderRadius: "8px",
@@ -985,7 +984,9 @@ const PastelFrame = () => {
         <div
           style={{
             display: "flex",
-            flexDirection: "space-between",
+            flexDirection: isMobile ? "column" : "row",
+            justifyContent: "space-between",
+            gap: isMobile ? "0.5rem" : "1rem",
           }}
         >
           <Toggle
