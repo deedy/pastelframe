@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import ReactGA from "react-ga4";
+import quantize from "quantize";
 
 ReactGA.initialize("G-ZCMZ5QCRD7");
 
@@ -27,28 +28,41 @@ const PastelFrame = () => {
     useState(false);
   const [processedImage, setProcessedImage] = useState(null);
   const [threshold, setThreshold] = useState(30);
+  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
+  const [hoveredButton, setHoveredButton] = useState(null);
+  const [pastelColors, setPastelColors] = useState([
+    "#FF9AA2", // Bold pastel pink
+    "#FFB7B2", // Bold pastel peach
+    "#FFDAC1", // Bold pastel orange
+    "#E2F0CB", // Bold pastel lime
+    "#B5EAD7", // Bold pastel mint
+    "#C7CEEA", // Bold pastel periwinkle
+    "#FF85A1", // Bold pastel rose
+    "#FFC300", // Bold pastel yellow
+    "#DAF7A6", // Bold pastel green
+    "#FF99C8", // Bold pastel bubblegum
+    "linear-gradient(to right, #FF9AA2, #FFDAC1)", // Bold pink to orange gradient
+    "linear-gradient(to right, #B5EAD7, #C7CEEA)", // Bold mint to periwinkle gradient
+    "linear-gradient(to right, #FFB7B2, #FF85A1)", // Bold peach to rose gradient
+    "linear-gradient(to right, #E2F0CB, #DAF7A6)", // Bold lime to green gradient
+    "#1A1A1A",
+    "#FFFFFF",
+  ]);
 
-  const pastelColors = [
-    "#C2A6B5",
-    "#A6B5C2",
-    "#B5C2A6",
-    "#C2B5A6",
-    "#A6C2B5",
-    "#B5A6C2",
-    "#8E9AAF",
-    "#AFB3A4",
-    "#A4AFB3",
-    "#AFA48E",
-    "linear-gradient(to right, #ffecd2, #fcb69f)",
-    "linear-gradient(to right, #d4fc79, #96e6a1)",
-    "linear-gradient(to right, #84fab0, #8fd3f4)",
-    "linear-gradient(to right, #a6c0fe, #f68084)",
-    "linear-gradient(to right, #fbc2eb, #a6c1ee)",
-  ];
+  // Set a minimum size
+  const MIN_WIDTH = 300;
+  const MIN_HEIGHT = 300;
+  const MIN_BORDER_WIDTH = 20;
 
   useEffect(() => {
     ReactGA.send({ hitType: "pageview", page: window.location.pathname });
   }, []);
+
+  useEffect(() => {
+    if (image) {
+      setImageSize({ width: image.width, height: image.height });
+    }
+  }, [image]);
 
   useEffect(() => {
     const handlePaste = (e) => {
@@ -204,32 +218,40 @@ const PastelFrame = () => {
       const maxWidth = window.innerWidth * maxWidthPercentage - 2 * padding;
       const maxHeight = window.innerHeight * maxHeightPercentage - 2 * padding;
 
-      // Set a minimum size
-      const minWidth = 300;
-      const minHeight = 200;
+      let newWidth = image ? imageSize.width : 700;
+      let newHeight = image ? imageSize.height : 300;
 
-      let newWidth = image ? image.width : 700;
-      let newHeight = image ? image.height : 300;
+      // Adjust canvas size based on border width
+      const totalWidth =
+        newWidth + padding * 2 + borderWidth.left + borderWidth.right;
+      const totalHeight =
+        newHeight + padding * 2 + borderWidth.top + borderWidth.bottom;
 
-      // Calculate aspect ratio
-      const aspectRatio = newWidth / newHeight;
+      // Adjust dimensions if total size exceeds max width or height
+      if (totalWidth > maxWidth || totalHeight > maxHeight) {
+        const scaleX = maxWidth / totalWidth;
+        const scaleY = maxHeight / totalHeight;
+        const scale = Math.min(scaleX, scaleY);
 
-      // Adjust dimensions based on max width and height
-      if (newWidth > maxWidth) {
-        newWidth = maxWidth;
-        newHeight = newWidth / aspectRatio;
+        newWidth *= scale;
+        newHeight *= scale;
       }
 
-      if (newHeight > maxHeight) {
-        newHeight = maxHeight;
-        newWidth = newHeight * aspectRatio;
+      // Ensure the new dimensions do not fall below the minimum values
+      if (newWidth < MIN_WIDTH || newHeight < MIN_HEIGHT) {
+        // Calculate the minimum scaling factors to meet minimum dimensions
+        const minScaleX = MIN_WIDTH / newWidth;
+        const minScaleY = MIN_HEIGHT / newHeight;
+
+        // Use the larger scaling factor to maintain the minimum size while preserving aspect ratio
+        const minScale = Math.max(minScaleX, minScaleY);
+
+        // Apply the minimum scale to both width and height
+        newWidth = newWidth * minScale;
+        newHeight = newHeight * minScale;
       }
 
-      // Ensure minimum size
-      newWidth = Math.max(newWidth, minWidth);
-      newHeight = Math.max(newHeight, minHeight);
-
-      // Adjust canvas size
+      // Set canvas size
       canvas.width =
         newWidth + padding * 2 + borderWidth.left + borderWidth.right;
       canvas.height =
@@ -242,7 +264,7 @@ const PastelFrame = () => {
         ctx.shadowOffsetY = 0;
       }
 
-      // Draw background only if not removed
+      // Draw background
       const backgroundGradient = createGradient(
         ctx,
         backgroundColor,
@@ -299,14 +321,6 @@ const PastelFrame = () => {
         );
         ctx.closePath();
         ctx.fill();
-
-        // Apply drop shadow if enabled
-        if (hasDropShadow) {
-          ctx.shadowColor = "rgba(0, 0, 0, 0.3)";
-          ctx.shadowBlur = 20;
-          ctx.shadowOffsetX = 0;
-          ctx.shadowOffsetY = 0;
-        }
       }
 
       ctx.shadowColor = "transparent";
@@ -350,15 +364,7 @@ const PastelFrame = () => {
         ctx.clip();
       }
 
-      if (!image) {
-        ctx.fillStyle = "rgba(255, 255, 255, 0.0)";
-        ctx.fillRect(
-          borderWidth.left + padding,
-          borderWidth.top + padding,
-          newWidth,
-          newHeight,
-        );
-      } else {
+      if (image) {
         const imageToDraw =
           isImageBackgroundRemoved && processedImage ? processedImage : image;
         ctx.save();
@@ -405,6 +411,14 @@ const PastelFrame = () => {
           newHeight,
         );
         ctx.restore();
+      } else {
+        ctx.fillStyle = "rgba(255, 255, 255, 0.0)";
+        ctx.fillRect(
+          borderWidth.left + padding,
+          borderWidth.top + padding,
+          newWidth,
+          newHeight,
+        );
       }
 
       if (!hasPadding) {
@@ -425,6 +439,7 @@ const PastelFrame = () => {
     };
   }, [
     image,
+    imageSize,
     backgroundColor,
     borderColor,
     borderWidth,
@@ -434,6 +449,116 @@ const PastelFrame = () => {
     processedImage,
   ]);
 
+  const extractColors = (imageData, numColors = 8) => {
+    const pixels = imageData.data;
+    const pixelArray = [];
+
+    for (let i = 0; i < pixels.length; i += 4) {
+      pixelArray.push([pixels[i], pixels[i + 1], pixels[i + 2]]);
+    }
+
+    const colorMap = quantize(pixelArray, numColors);
+    const palette = colorMap.palette();
+
+    const rgbToHsl = (r, g, b) => {
+      r /= 255;
+      g /= 255;
+      b /= 255;
+      const max = Math.max(r, g, b),
+        min = Math.min(r, g, b);
+      let h,
+        s,
+        l = (max + min) / 2;
+
+      if (max === min) {
+        h = s = 0;
+      } else {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+          case r:
+            h = (g - b) / d + (g < b ? 6 : 0);
+            break;
+          case g:
+            h = (b - r) / d + 2;
+            break;
+          case b:
+            h = (r - g) / d + 4;
+            break;
+        }
+        h /= 6;
+      }
+      return [h * 360, s * 100, l * 100];
+    };
+
+    const hslToHex = (h, s, l) => {
+      l /= 100;
+      const a = (s * Math.min(l, 1 - l)) / 100;
+      const f = (n) => {
+        const k = (n + h / 30) % 12;
+        const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+        return Math.round(255 * color)
+          .toString(16)
+          .padStart(2, "0");
+      };
+      return `#${f(0)}${f(8)}${f(4)}`;
+    };
+
+    const hslColors = palette.map((color) => rgbToHsl(...color));
+
+    // Sort colors by luminance
+    hslColors.sort((a, b) => a[2] - b[2]);
+
+    // Select diverse colors
+    const selectedColors = [];
+    const luminanceRanges = [
+      [0, 20], // Very dark
+      [20, 40], // Dark
+      [40, 60], // Medium
+      [60, 80], // Light
+      [80, 100], // Very light
+    ];
+
+    luminanceRanges.forEach((range) => {
+      const colorsInRange = hslColors.filter(
+        (color) => color[2] >= range[0] && color[2] < range[1],
+      );
+      if (colorsInRange.length > 0) {
+        selectedColors.push(
+          colorsInRange[Math.floor(colorsInRange.length / 2)],
+        );
+      }
+    });
+
+    // If we have less than numColors, add more from the original palette
+    while (selectedColors.length < numColors - 2 && hslColors.length > 0) {
+      selectedColors.push(hslColors.pop());
+    }
+
+    // Create gradients
+    const gradients = [];
+    for (
+      let i = 0;
+      i < selectedColors.length - 1 && gradients.length < 2;
+      i++
+    ) {
+      const color1 = selectedColors[i];
+      const color2 = selectedColors[i + 1];
+      gradients.push(
+        `linear-gradient(to right, ${hslToHex(...color1)}, ${hslToHex(...color2)})`,
+      );
+    }
+
+    // Convert selected colors to hex
+    const hexColors = selectedColors.map((color) => hslToHex(...color));
+
+    // Combine solid colors and gradients
+    const finalColors = [...hexColors, ...gradients];
+
+    // Ensure we return exactly numColors
+    return finalColors.slice(0, numColors);
+  };
+
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     const reader = new FileReader();
@@ -442,6 +567,25 @@ const PastelFrame = () => {
       img.onload = () => {
         setImage(img);
         setBorderColor(getAverageColor(img));
+        // Extract theme colors
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0, img.width, img.height);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const extractedColors = extractColors(imageData);
+
+        // Update pastelColors array
+        setPastelColors((prevColors) => {
+          const newColors = [...prevColors];
+          extractedColors.forEach((color) => {
+            if (!newColors.includes(color)) {
+              newColors.push(color);
+            }
+          });
+          return newColors;
+        });
       };
       img.src = event.target.result;
     };
@@ -468,8 +612,8 @@ const PastelFrame = () => {
     let count = 0;
 
     // Define the 20% border dimensions
-    const borderX = Math.floor(canvas.width * 0.2);
-    const borderY = Math.floor(canvas.height * 0.2);
+    const borderX = Math.floor(canvas.width * 0.1);
+    const borderY = Math.floor(canvas.height * 0.1);
 
     for (let y = 0; y < canvas.height; y++) {
       for (let x = 0; x < canvas.width; x++) {
@@ -557,41 +701,86 @@ const PastelFrame = () => {
         const dx = e.clientX - initialMousePos.x;
         const dy = e.clientY - initialMousePos.y;
 
-        setBorderWidth((prev) => {
-          const newBorderWidth = { ...prev };
-          switch (isDragging) {
-            case "top":
-            case "bottom":
-              const totalVerticalChange = Math.max(
-                40,
-                Math.min(
-                  300,
-                  initialBorderWidth.top +
-                    initialBorderWidth.bottom +
-                    dy * (isDragging === "bottom" ? 2 : -2),
-                ),
+        let newBorderWidth = { ...borderWidth };
+
+        switch (isDragging) {
+          case "top":
+          case "bottom":
+            const totalVerticalChange = Math.max(
+              0,
+              initialBorderWidth.top +
+                initialBorderWidth.bottom +
+                dy * (isDragging === "bottom" ? 2 : -2),
+            );
+            newBorderWidth.top = Math.max(
+              MIN_BORDER_WIDTH,
+              totalVerticalChange / 2,
+            );
+            newBorderWidth.bottom = Math.max(
+              MIN_BORDER_WIDTH,
+              totalVerticalChange / 2,
+            );
+            break;
+          case "left":
+          case "right":
+            const totalHorizontalChange = Math.max(
+              0,
+              initialBorderWidth.left +
+                initialBorderWidth.right +
+                dx * (isDragging === "right" ? 2 : -2),
+            );
+            newBorderWidth.left = Math.max(
+              MIN_BORDER_WIDTH,
+              totalHorizontalChange / 2,
+            );
+            newBorderWidth.right = Math.max(
+              MIN_BORDER_WIDTH,
+              totalHorizontalChange / 2,
+            );
+            break;
+          default:
+            break;
+        }
+
+        setBorderWidth(newBorderWidth);
+
+        setImageSize((prev) => {
+          const newSize = { ...prev };
+          const aspectRatio = prev.width / prev.height;
+
+          if (isDragging === "top" || isDragging === "bottom") {
+            if (newBorderWidth.top <= MIN_BORDER_WIDTH) {
+              const heightDiff = dy * (isDragging === "bottom" ? -2 : 2);
+              let newHeight = Math.max(
+                MIN_HEIGHT,
+                imageSize.height - 2 * heightDiff,
               );
-              newBorderWidth.top = totalVerticalChange / 2;
-              newBorderWidth.bottom = totalVerticalChange / 2;
-              break;
-            case "left":
-            case "right":
-              const totalHorizontalChange = Math.max(
-                40,
-                Math.min(
-                  300,
-                  initialBorderWidth.left +
-                    initialBorderWidth.right +
-                    dx * (isDragging === "right" ? 2 : -2),
-                ),
+              let newWidth = newHeight * aspectRatio;
+              if (newWidth < MIN_WIDTH) {
+                newWidth = MIN_WIDTH;
+                newHeight = newWidth / aspectRatio;
+              }
+              newSize.width = newWidth;
+              newSize.height = newHeight;
+            }
+          } else if (isDragging === "left" || isDragging === "right") {
+            if (newBorderWidth.left <= MIN_BORDER_WIDTH) {
+              const widthDiff = dx * (isDragging === "right" ? -2 : 2);
+
+              let newWidth = Math.max(
+                MIN_WIDTH,
+                imageSize.width - 2 * widthDiff,
               );
-              newBorderWidth.left = totalHorizontalChange / 2;
-              newBorderWidth.right = totalHorizontalChange / 2;
-              break;
-            default:
-              break;
+              let newHeight = newWidth / aspectRatio;
+              if (newHeight < MIN_HEIGHT) {
+                newHeight = MIN_HEIGHT;
+                newWidth = newHeight * aspectRatio;
+              }
+              newSize.width = newWidth;
+              newSize.height = newHeight;
+            }
           }
-          return newBorderWidth;
+          return newSize;
         });
       }
     };
@@ -607,7 +796,29 @@ const PastelFrame = () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isDragging, initialBorderWidth, initialMousePos]);
+  }, [borderWidth, isDragging, imageSize, initialBorderWidth, initialMousePos]);
+
+  const dragButtonStyle = (position, isHovered) => ({
+    position: "absolute",
+    width: "20px",
+    height: "20px",
+    backgroundColor: "#8E9AAF",
+    borderRadius: "50%",
+    cursor: isDragging ? "grabbing" : "grab",
+    transition: "transform 0.2s, width 0.2s, height 0.2s",
+    zIndex: 10,
+    ...position,
+    transform: `${position.transform} ${isHovered ? "scale(1.5)" : "scale(1)"}`,
+  });
+
+  const renderDragButton = (position, direction) => (
+    <div
+      style={dragButtonStyle(position, hoveredButton === direction)}
+      onMouseDown={(e) => handleMouseDown(e, direction)}
+      onMouseEnter={() => setHoveredButton(direction)}
+      onMouseLeave={() => setHoveredButton(null)}
+    />
+  );
 
   return (
     <div
@@ -686,62 +897,18 @@ const PastelFrame = () => {
             borderRadius: "8px",
           }}
         />
-        <div
-          style={{
-            position: "absolute",
-            top: "-10px",
-            left: "50%",
-            width: "20px",
-            height: "20px",
-            backgroundColor: "#8E9AAF",
-            borderRadius: "50%",
-            transform: "translateX(-50%)",
-            cursor: "ns-resize",
-          }}
-          onMouseDown={(e) => handleMouseDown(e, "top")}
-        />
-        <div
-          style={{
-            position: "absolute",
-            right: "-10px",
-            top: "50%",
-            width: "20px",
-            height: "20px",
-            backgroundColor: "#8E9AAF",
-            borderRadius: "50%",
-            transform: "translateY(-50%)",
-            cursor: "ew-resize",
-          }}
-          onMouseDown={(e) => handleMouseDown(e, "right")}
-        />
-        <div
-          style={{
-            position: "absolute",
-            bottom: "-8px",
-            left: "50%",
-            width: "20px",
-            height: "20px",
-            backgroundColor: "#8E9AAF",
-            borderRadius: "50%",
-            transform: "translateX(-50%)",
-            cursor: "ns-resize",
-          }}
-          onMouseDown={(e) => handleMouseDown(e, "bottom")}
-        />
-        <div
-          style={{
-            position: "absolute",
-            left: "-10px",
-            top: "50%",
-            width: "20px",
-            height: "20px",
-            backgroundColor: "#8E9AAF",
-            borderRadius: "50%",
-            transform: "translateY(-50%)",
-            cursor: "ew-resize",
-          }}
-          onMouseDown={(e) => handleMouseDown(e, "left")}
-        />
+        {renderDragButton(
+          { right: "-10px", top: "50%", transform: "translateY(-50%)" },
+          "right",
+        )}
+        {renderDragButton(
+          { bottom: "-10px", left: "50%", transform: "translateX(-50%)" },
+          "bottom",
+        )}
+        {renderDragButton(
+          { left: "-10px", top: "50%", transform: "translateY(-50%)" },
+          "left",
+        )}
       </div>
 
       <div
