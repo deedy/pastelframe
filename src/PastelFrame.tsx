@@ -40,6 +40,8 @@ const PastelFrame = () => {
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const [hoveredButton, setHoveredButton] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [savedConfigs, setSavedConfigs] = useState([]);
+
   const [pastelColors, setPastelColors] = useState([
     "#FF9AA2", // Bold pastel pink
     "#FFB7B2", // Bold pastel peach
@@ -70,6 +72,130 @@ const PastelFrame = () => {
       setImageSize({ width: image.width, height: image.height });
     }
   }, [image]);
+
+  useEffect(() => {
+    // Load saved configurations from local storage
+    const configs =
+      JSON.parse(localStorage.getItem("pastelFrameConfigs")) || [];
+    setSavedConfigs(configs);
+  }, []);
+
+  const saveConfiguration = () => {
+    if (!image) {
+      alert("Please upload an image before saving.");
+      return;
+    }
+
+    // Create a temporary canvas to store the raw image
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = image.width;
+    tempCanvas.height = image.height;
+    const tempCtx = tempCanvas.getContext("2d");
+    tempCtx.drawImage(image, 0, 0, image.width, image.height);
+
+    const config = {
+      id: Date.now(),
+      backgroundColor,
+      borderColor,
+      borderWidth,
+      hasPadding,
+      hasDropShadow,
+      isImageBackgroundRemoved,
+      threshold,
+      imageDataUrl: tempCanvas.toDataURL(),
+      originalWidth: image.width,
+      originalHeight: image.height,
+    };
+
+    const updatedConfigs = [...savedConfigs, config];
+    localStorage.setItem("pastelFrameConfigs", JSON.stringify(updatedConfigs));
+    setSavedConfigs(updatedConfigs);
+
+    ReactGA.event({
+      category: "User Interaction",
+      action: "Saved Configuration",
+    });
+  };
+
+  const loadConfiguration = (config) => {
+    setBackgroundColor(config.backgroundColor);
+    setBorderColor(config.borderColor);
+    setBorderWidth(config.borderWidth);
+    setHasPadding(config.hasPadding);
+    setHasDropShadow(config.hasDropShadow);
+    setIsImageBackgroundRemoved(config.isImageBackgroundRemoved);
+    setThreshold(config.threshold);
+
+    const img = new Image();
+    img.onload = () => {
+      setImage(img);
+      setImageSize({ width: img.width, height: img.height });
+    };
+    img.src = config.imageDataUrl;
+
+    ReactGA.event({
+      category: "User Interaction",
+      action: "Loaded Configuration",
+    });
+  };
+
+  const clearSavedConfigs = () => {
+    localStorage.removeItem("pastelFrameConfigs");
+    setSavedConfigs([]);
+    ReactGA.event({
+      category: "User Interaction",
+      action: "Cleared Saved Configurations",
+    });
+  };
+
+  const SavedConfigsList = () => (
+    <div
+      style={{
+        position: "absolute",
+        right: "10px",
+        top: "50px",
+        backgroundColor: isDarkMode ? "#34495E" : "#D6EAF8",
+        borderRadius: "8px",
+        padding: "10px",
+        maxHeight: "300px",
+        overflowY: "auto",
+      }}
+    >
+      {savedConfigs.map((config) => (
+        <div key={config.id} style={{ marginBottom: "5px" }}>
+          <button
+            onClick={() => loadConfiguration(config)}
+            style={{
+              backgroundColor: isDarkMode ? "#3498DB" : "#2980B9",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              padding: "5px 10px",
+              cursor: "pointer",
+            }}
+          >
+            Load {new Date(config.id).toLocaleString()}
+          </button>
+        </div>
+      ))}
+      {savedConfigs.length > 0 && (
+        <button
+          onClick={clearSavedConfigs}
+          style={{
+            backgroundColor: isDarkMode ? "#E74C3C" : "#C0392B",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            padding: "5px 10px",
+            cursor: "pointer",
+            marginTop: "10px",
+          }}
+        >
+          Clear All Saved
+        </button>
+      )}
+    </div>
+  );
 
   useEffect(() => {
     const handlePaste = (e) => {
@@ -1027,6 +1153,7 @@ const PastelFrame = () => {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
+            gap: "0.5rem",
           }}
         >
           <button
@@ -1052,7 +1179,22 @@ const PastelFrame = () => {
                 : "#2980B9")
             }
           >
-            Download
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ marginRight: "0.5rem" }}
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            {isMobile ? "" : "Download"}
           </button>
           <button
             onClick={handleCopyToClipboard}
@@ -1109,7 +1251,44 @@ const PastelFrame = () => {
                 </>
               )}
             </svg>
-            {isCopied ? "Copied!" : "Copy"}
+            {isMobile ? "" : isCopied ? "Copied!" : "Copy"}
+          </button>
+          <button
+            onClick={saveConfiguration}
+            style={{
+              padding: "0.75rem 1.5rem",
+              backgroundColor: isCopied
+                ? "#27AE60"
+                : isDarkMode
+                  ? "#3498DB"
+                  : "#2980B9",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              fontSize: "1rem",
+              transition: "background-color 0.3s",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ marginRight: "0.5rem" }}
+            >
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17 21 17 13 7 13 7 21"></polyline>
+              <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+            {isMobile ? "" : "Save"}
           </button>
         </div>
       </div>
@@ -1137,6 +1316,7 @@ const PastelFrame = () => {
             textDecoration: "none",
             display: "flex",
             alignItems: "center",
+            alignItems: "stretch",
             gap: "0.5rem",
           }}
         >
@@ -1212,6 +1392,7 @@ const PastelFrame = () => {
           </span>
         </label>
       </div>
+      {savedConfigs.length > 0 && <SavedConfigsList />}
     </div>
   );
 };
