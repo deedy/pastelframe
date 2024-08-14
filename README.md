@@ -4,13 +4,13 @@
 
 ## Features
 
-- Upload and display images
-- Customize background color with solid colors and pastel gradients
-- Adjust border thickness with interactive resizers
-- Toggle padding and drop shadow effects
-- Dark mode support
-- Download enhanced images
-- Copy enhanced images to clipboard
+-   Upload and display images
+-   Customize background color with solid colors and pastel gradients
+-   Adjust border thickness with interactive resizers
+-   Toggle padding and drop shadow effects
+-   Dark mode support
+-   Download enhanced images
+-   Copy enhanced images to clipboard
 
 ## Installation
 
@@ -24,9 +24,8 @@ npm install
 3. Run it locally
 
 ```bash
-npm start 
+npm start
 ```
-
 
 ## How to Use
 
@@ -48,12 +47,11 @@ Contributions, issues, and feature requests are welcome. Feel free to check [iss
 
 ## Future
 
- - Resizing should make smaller
- - Annotation 
- - Custom Pallette 
- - Text, Code, Tweet
- - Watermark
+-   Annotation
+-   Text, Code, Tweet
+-   Watermark
 
 ## License
 
 This project is [MIT](https://choosealicense.com/licenses/mit/) licensed.
+# justruncode
